@@ -31,11 +31,11 @@ if not oauth.token_is_valid():
 with open('../Initial_Setup/league_info_form.txt', 'r') as f:
     rosters = eval(f.read())
 
-league_id = str(rosters['league_id'])
+league_id = '763832' #str(rosters['league_id'])
 
 with open('../YahooGameInfo.json', 'r') as f:
     yahoo_info = json.load(f)
-game_key = yahoo_info['fantasy_content']['game'][0]['game_key']
+game_key = '406' #yahoo_info['fantasy_content']['game'][0]['game_key']
 
 
 columns = ['first', 'last', 'full', 'team',
@@ -146,7 +146,7 @@ for week in range(1, rosters['num_weeks']+1): #16 weeks total
             player_full_stats = pd.Series({'first': first_name,
                                                 'last': last_name,
                                                 'full': full_name,
-                                                'team': team_abbr,
+                                                #'team': team_abbr,
                                                 'manager_name': full_name, #This will be joined to weekly roster df
                                                 'ros_pos': roster_position,
                                                 'player_key': player_key,

@@ -1,5 +1,5 @@
 {
-  "league_id": 123456,
+  "league_id": 763832,
   "num_teams": 12,
   "num_weeks": 16,
   "roster": [
@@ -9,7 +9,5 @@
             'TE',
             'W/R/T',
             'BN1', 'BN2', 'BN3', 'BN4', 'BN5', 'BN6', 'BN7', 'BN8', 'BN9', 'BN10',
-            'K',
-            'DEF'
             ]
 }

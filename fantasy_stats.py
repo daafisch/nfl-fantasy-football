@@ -3,6 +3,8 @@ from yahoo_oauth import OAuth2
 import json
 from json import dumps
 import datetime
+import requests
+import os
 
 class Yahoo_Api():
     def __init__(self, consumer_key, consumer_secret,
@@ -204,7 +206,8 @@ class UpdateData():
             json.dump(r, outfile)
             
         global game_key
-        game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
+        #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
+        game_key = '406'
         return;
 
 
@@ -226,6 +229,51 @@ class UpdateData():
             week += 1
         return;
 
+    def CalcDraftValue(self):
+        adp = {}
+        playerFound = 0
+        #Grab the ADPS
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2022')
+        dataCur = responseCur.json()
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2021')
+        dataPrev = responsePrev.json()
+
+        yahoo_api._login()
+        week = 16
+        team = 1
+        for team in range(1, num_teams+1): #assumes 12-team league
+            print("Team: ")
+            print(team)
+            print("\r\n")
+            url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/'+game_key+'.l.'+league_id+'.t.'+str(team)+'/roster;week='+str(week)
+            response = oauth.session.get(url, params={'format': 'json'})
+            r = response.json()
+            #if dataCur['players']['name']
+            for y in r['fantasy_content']['team'][1]['roster']['0']['players']:
+                if y != "count":
+                    foundADPCurr = 0.0
+                    foundADPPrev = 0.0
+                    #Search Current ADPS
+                    for x in dataCur['players']:
+                        if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') == x['name'].replace('.', ''):
+                            playerFound += 1
+                            foundADPCurr = x['adp']
+                            break
+                    for x in dataPrev['players']:
+                        if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') == x['name'].replace('.', ''):
+                            playerFound += 1
+                            foundADPPrev = x['adp']
+                            break
+                    if playerFound != 0:
+                        adp = int((((foundADPCurr/12)+1) + ((foundADPPrev/12)+1))/playerFound)
+                    
+                    print("Player: " + r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "/" + str(playerFound) + " = " + str(adp))
+                    playerFound = 0
+                    adp = 0.0
+                
+            team =+ 1
+            
+
 def CurrentWeek():
     current_week = 1
     #with open('./league.json', 'r') as fobj:
@@ -233,13 +281,19 @@ def CurrentWeek():
     #current_week = info['fantasy_content']['league'][0]['current_week']
     return current_week;
 
+def FFC_ADP():
+    
 
+    with open('./rosters/week_16/team_1_wk_16_roster.json') as myFile:
+        jsondata=myFile.read()
 
+    team1Week16 = json.loads(jsondata)
+    team1Week16 = team1Week16
 ### WHERE ALL THE MAGIC HAPPENS #########
 
 def main():
 ##### Get Yahoo Auth ####
-
+    
     # Yahoo Keys
     with open('./auth/oauth2yahoo.json') as json_yahoo_file:
         auths = json.load(json_yahoo_file)
@@ -250,7 +304,6 @@ def main():
     json_yahoo_file.close()
 
 #### Declare Yahoo, and Current Week Variable ####
-
 
     global yahoo_api
     yahoo_api = Yahoo_Api(yahoo_consumer_key, yahoo_consumer_secret, yahoo_access_key)#, yahoo_access_secret)
@@ -274,6 +327,7 @@ def main():
     bot = Bot(yahoo_api)
     bot.run()
 
+    
 
 class Bot():
     def __init__(self, yahoo_api):
@@ -288,18 +342,19 @@ class Bot():
                            
         UD.UpdateLeague()
         print('League update - Done')
+
+        UD.CalcDraftValue()              
+        # UD.UpdateLeagueStandings()
+        # print('Standings update - Done')
                            
-        UD.UpdateLeagueStandings()
-        print('Standings update - Done')
+        # UD.UpdateScoreboards()
+        # print('Scoreboards update - Done')
                            
-        UD.UpdateScoreboards()
-        print('Scoreboards update - Done')
+        # UD.UpdateTransactions()
+        # print('Transactions update - Done')
                            
-        UD.UpdateTransactions()
-        print('Transactions update - Done')
-                           
-        UD.UpdateRosters()
-        print('Rosters update - Done')
+        # UD.UpdateRosters()
+        # print('Rosters update - Done')
                            
         print('Update Complete')
 
