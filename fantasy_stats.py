@@ -5,6 +5,9 @@ from json import dumps
 import datetime
 import requests
 import os
+import csv
+import time
+import math
 
 class Yahoo_Api():
     def __init__(self, consumer_key, consumer_secret,
@@ -206,8 +209,9 @@ class UpdateData():
             json.dump(r, outfile)
             
         global game_key
-        #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
-        game_key = '406'
+        game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
+        #game_key = '406' 2021
+        #game_key = '414' 2022
         return;
 
 
@@ -229,6 +233,48 @@ class UpdateData():
             week += 1
         return;
 
+    def UpdateDraftResults(self):
+        #"https://fantasysports.yahooapis.com/fantasy/v2/league/{self.get_league_key()}/draftresults"
+        url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/draftresults'
+        response = oauth.session.get(url, params={'format': 'json'})
+        r = response.json()
+        header = ['Draft Pick', 'Drafted Value', 'Player', 'Player ID', 'Team Name']
+        file_name = 'draft_results_' + league_id + '.csv'
+        # with open('./draft_results/'+file_name, 'w') as outfile:
+        outfile = open('./draft_results/'+file_name, 'w')
+        writer = csv.writer(outfile, lineterminator='\n')
+        writer.writerow(header)
+        for x in r['fantasy_content']['league'][1]['draft_results']:  
+            if x != "count":
+                player_key = r['fantasy_content']['league'][1]['draft_results'][x]['draft_result']['player_key']
+                #Only used for Dojo data
+                #player_cost = r['fantasy_content']['league'][1]['draft_results'][x]['draft_result']['cost'] 
+                player_cost = math.floor(int(x)/12) + 1
+                team_key = r['fantasy_content']['league'][1]['draft_results'][x]['draft_result']['team_key']
+                player_url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/players;player_keys='+player_key
+                team_url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/' + team_key + '/metadata' 
+                player_response = oauth.session.get(player_url, params={'format': 'json'})
+                player_r = player_response.json()
+                team_response = oauth.session.get(team_url, params={'format': 'json'})
+                team_r = team_response.json()
+                data = [int(x)+1, player_cost, player_r['fantasy_content']['league'][1]['players']['0']['player'][0][2]['name']['full'],player_key, team_r['fantasy_content']['team'][0][2]['name']]
+                writer.writerow(data)
+                time.sleep(0.1)
+                print(x)
+            else:
+                break
+        outfile.close()
+            
+
+    def UpdatePlayerList(self):
+        #https://fantasysports.yahooapis.com/fantasy/v2/league/{self.get_league_key()}/players
+        url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/players'
+        response = oauth.session.get(url, params={'format': 'json'})
+        r = response.json()
+        file_name = 'player_list_' + league_id + '.json'
+        with open('./player_list/'+file_name, 'w') as outfile:
+            json.dump(r, outfile)
+
     def CalcDraftValue(self):
         adp = {}
         playerFound = 0
@@ -248,7 +294,6 @@ class UpdateData():
             url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/'+game_key+'.l.'+league_id+'.t.'+str(team)+'/roster;week='+str(week)
             response = oauth.session.get(url, params={'format': 'json'})
             r = response.json()
-            #if dataCur['players']['name']
             for y in r['fantasy_content']['team'][1]['roster']['0']['players']:
                 if y != "count":
                     foundADPCurr = 0.0
@@ -311,7 +356,10 @@ def main():
     global current_week
     current_week = CurrentWeek()
 
-    with open('./Initial_Setup/league_info_form.txt', 'r') as f:
+    # with open('./Initial_Setup/league_info_form.txt', 'r') as f:
+    with open('./Initial_Setup/league_info_form_keeper_22.txt', 'r') as f:
+    # with open('./Initial_Setup/league_info_form_keeper_21.txt', 'r') as f:
+    # with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
         rosters = eval(f.read())
 
     global num_teams
@@ -343,7 +391,14 @@ class Bot():
         UD.UpdateLeague()
         print('League update - Done')
 
+        UD.UpdatePlayerList()
+        print('Player List - Done')
+
+        UD.UpdateDraftResults()
+        print('Draft Results - Done')
+        
         UD.CalcDraftValue()              
+        print('Draft Value - done')
         # UD.UpdateLeagueStandings()
         # print('Standings update - Done')
                            
