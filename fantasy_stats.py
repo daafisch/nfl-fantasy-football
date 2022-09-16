@@ -9,6 +9,9 @@ import csv
 import time
 import math
 
+draftData = []
+keeperValues = []
+
 class Yahoo_Api():
     def __init__(self, consumer_key, consumer_secret,
                 access_key):
@@ -234,13 +237,13 @@ class UpdateData():
         return;
 
     def UpdateDraftResults(self):
+        global draftData
         #"https://fantasysports.yahooapis.com/fantasy/v2/league/{self.get_league_key()}/draftresults"
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/draftresults'
         response = oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         header = ['Draft Pick', 'Drafted Value', 'Player', 'Player ID', 'Team Name']
         file_name = 'draft_results_' + league_id + '.csv'
-        # with open('./draft_results/'+file_name, 'w') as outfile:
         outfile = open('./draft_results/'+file_name, 'w')
         writer = csv.writer(outfile, lineterminator='\n')
         writer.writerow(header)
@@ -257,15 +260,30 @@ class UpdateData():
                 player_r = player_response.json()
                 team_response = oauth.session.get(team_url, params={'format': 'json'})
                 team_r = team_response.json()
-                data = [int(x)+1, player_cost, player_r['fantasy_content']['league'][1]['players']['0']['player'][0][2]['name']['full'],player_key, team_r['fantasy_content']['team'][0][2]['name']]
-                writer.writerow(data)
+                # data = [int(x)+1, player_cost, player_r['fantasy_content']['league'][1]['players']['0']['player'][0][2]['name']['full'],player_key, team_r['fantasy_content']['team'][0][2]['name']]
+                draftData.append([int(x)+1, player_cost, player_r['fantasy_content']['league'][1]['players']['0']['player'][0][2]['name']['full'],player_key, team_r['fantasy_content']['team'][0][2]['name']])
+                # writer.writerow(data)
                 time.sleep(0.1)
                 print(x)
             else:
                 break
+        writer.writerows(draftData)
         outfile.close()
             
+    def ReadDraftResults(self):
+        global draftData
+        file_name = 'draft_results_' + league_id + '.csv'
+        try:
+            with open('./draft_results/'+file_name, newline='\n') as csvfile:
+                print("Saved draft data found")
+                reader = csv.reader(csvfile)
+                draftData = list(reader)
+        except IOError:
+            print("Saved draft data not found, pulling from Yahoo!")
+            self.UpdateDraftResults()
 
+        print("Draft data read")
+        
     def UpdatePlayerList(self):
         #https://fantasysports.yahooapis.com/fantasy/v2/league/{self.get_league_key()}/players
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/players'
@@ -276,48 +294,95 @@ class UpdateData():
             json.dump(r, outfile)
 
     def CalcDraftValue(self):
+        global draftData
+        global keeperValues
         adp = {}
         playerFound = 0
+        header = ['Team', 'Player', 'Keeper Value', 'Drafted Value', 'Prev ADP', 'Curr ADP']
+        file_name = 'keeper_values_' + league_id + '.csv'
+        outfile = open('./keeper_values/'+file_name, 'w')
+        writer = csv.writer(outfile, lineterminator='\n')
+        writer.writerow(header)
+
         #Grab the ADPS
-        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2022')
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2021')
         dataCur = responseCur.json()
-        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2021')
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2020')
         dataPrev = responsePrev.json()
 
         yahoo_api._login()
         week = 16
         team = 1
         for team in range(1, num_teams+1): #assumes 12-team league
-            print("Team: ")
-            print(team)
-            print("\r\n")
             url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/'+game_key+'.l.'+league_id+'.t.'+str(team)+'/roster;week='+str(week)
             response = oauth.session.get(url, params={'format': 'json'})
             r = response.json()
+            teamname = r['fantasy_content']['team'][0][2]['name']
+            print("Team: ")
+            print(teamname)
+            print("\r\n")
             for y in r['fantasy_content']['team'][1]['roster']['0']['players']:
                 if y != "count":
                     foundADPCurr = 0.0
                     foundADPPrev = 0.0
+                    foundDraft = 0.0
+                    i = 0
+                    is_keeper_idx = 0
                     #Search Current ADPS
                     for x in dataCur['players']:
                         if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') == x['name'].replace('.', ''):
                             playerFound += 1
                             foundADPCurr = x['adp']
                             break
+                    #Search Previous ADPs
                     for x in dataPrev['players']:
                         if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') == x['name'].replace('.', ''):
                             playerFound += 1
                             foundADPPrev = x['adp']
                             break
+                    #Search Draft data
+                    for x in draftData:
+                        i += 1
+                        if i < 168:
+                            #Player found in draft data
+                            if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') in draftData[i]:
+                                playerFound += 1
+                                #the index where is_keeper is found changes, so search the list and save the index
+                                for z,  hay in enumerate(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0]):
+                                    if 'is_keeper' in hay:
+                                        is_keeper_idx = z
+                                        break
+                                
+                                #check if the player was a keeper
+                                if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == False:
+                                    #Store the drafed round
+                                    foundDraft = int(draftData[i][1]) 
+                                elif r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == True:
+                                    #Store the keeper value
+                                    foundDraft = int(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['cost'])
+                                break
+                        else:
+                            #Player not found in draft data, free agent pick up
+                            playerFound += 1
+                            foundDraft = 8.0
+                        
                     if playerFound != 0:
-                        adp = int((((foundADPCurr/12)+1) + ((foundADPPrev/12)+1))/playerFound)
+                        if foundADPCurr != 0.0:
+                            foundADPCurr = int((foundADPCurr/12)+1)
+                        if foundADPPrev != 0.0:
+                            foundADPPrev = int((foundADPPrev/12)+1)
+                        adp = int(((foundADPCurr + foundADPPrev + foundDraft)/playerFound))
+                        #Team, Player, Keeper Value, Drafted Round, Prev ADP, Curr ADP 
+                        keeperValues.append([teamname, r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'], adp, foundDraft, foundADPPrev, foundADPCurr])
                     
-                    print("Player: " + r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "/" + str(playerFound) + " = " + str(adp))
+                    print("Player: " + r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "+" + str(foundDraft) + "/" + str(playerFound) + " = " + str(adp))
                     playerFound = 0
                     adp = 0.0
                 
             team =+ 1
-            
+
+        writer.writerows(keeperValues)
+        outfile.close()    
 
 def CurrentWeek():
     current_week = 1
@@ -394,7 +459,8 @@ class Bot():
         UD.UpdatePlayerList()
         print('Player List - Done')
 
-        UD.UpdateDraftResults()
+        #UD.UpdateDraftResults()
+        UD.ReadDraftResults()
         print('Draft Results - Done')
         
         UD.CalcDraftValue()              
