@@ -48,6 +48,7 @@ class UpdateData():
         load_file.close()
 
         yahoo_api._login() # get the newest transactions and write over the existing new_transactions
+        #url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/transactions'
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/transactions'
         response = oauth.session.get(url, params={'format': 'json'})
         r = response.json()
@@ -212,9 +213,10 @@ class UpdateData():
             json.dump(r, outfile)
             
         global game_key
-        game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
-        #game_key = '406' 2021
-        #game_key = '414' 2022
+
+        #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
+        game_key = '406' #2021
+        #game_key = '414' #2022
         return;
 
 
@@ -298,6 +300,7 @@ class UpdateData():
         global keeperValues
         adp = {}
         playerFound = 0
+        foundInTransactions = 0
         header = ['Team', 'Player', 'Keeper Value', 'Drafted Value', 'Prev ADP', 'Curr ADP']
         file_name = 'keeper_values_' + league_id + '.csv'
         outfile = open('./keeper_values/'+file_name, 'w')
@@ -309,6 +312,10 @@ class UpdateData():
         dataCur = responseCur.json()
         responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2020')
         dataPrev = responsePrev.json()
+
+        load_file = open('./transactions/Transaction_new.json') # load transactions from previous season
+        transactions_prev = json.load(load_file)
+        load_file.close()
 
         yahoo_api._login()
         week = 16
@@ -328,15 +335,16 @@ class UpdateData():
                     foundDraft = 0.0
                     i = 0
                     is_keeper_idx = 0
+                    player_to_find = r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '')
                     #Search Current ADPS
                     for x in dataCur['players']:
-                        if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') == x['name'].replace('.', ''):
+                        if player_to_find == x['name'].replace('.', ''):
                             playerFound += 1
                             foundADPCurr = x['adp']
                             break
                     #Search Previous ADPs
                     for x in dataPrev['players']:
-                        if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') == x['name'].replace('.', ''):
+                        if player_to_find == x['name'].replace('.', ''):
                             playerFound += 1
                             foundADPPrev = x['adp']
                             break
@@ -345,22 +353,38 @@ class UpdateData():
                         i += 1
                         if i < 168:
                             #Player found in draft data
-                            if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') in draftData[i]:
+                            if player_to_find in draftData[i]:
                                 playerFound += 1
-                                #the index where is_keeper is found changes, so search the list and save the index
-                                for z,  hay in enumerate(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0]):
-                                    if 'is_keeper' in hay:
-                                        is_keeper_idx = z
-                                        break
-                                
-                                #check if the player was a keeper
-                                if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == False:
-                                    #Store the drafed round
-                                    foundDraft = int(draftData[i][1]) 
-                                elif r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == True:
-                                    #Store the keeper value
-                                    foundDraft = int(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['cost'])
-                                break
+                                #search to see if the player involved in a transaction
+                                for x in transactions_prev['fantasy_content']['league'][1]['transactions']:
+                                    #if 'add/drop' in hay:
+                                    if x != "count":
+                                        if "add" in transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][0]['type']:
+                                            if player_to_find == transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][1]['players']['0']['player'][0][2]['name']['full'].replace('.', ''):
+                                                #Player found in transaction data, free agent pick up
+                                                foundInTransactions = 1
+                                                break
+
+                                if foundInTransactions == 0:    
+                                    #the index where is_keeper is found changes, so search the list and save the index
+                                    for z,  hay in enumerate(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0]):
+                                        if 'is_keeper' in hay:
+                                            is_keeper_idx = z
+                                            break
+                                    
+                                    #check if the player was a keeper
+                                    if r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == False:
+                                        #Store the drafed round
+                                        foundDraft = int(draftData[i][1]) 
+                                    elif r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == True:
+                                        #Store the keeper value
+                                        foundDraft = int(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['cost'])
+                                    break
+                                else:
+                                    #Player found in transaction data
+                                    playerFound += 1
+                                    foundDraft = 8.0
+                                    foundInTransactions = 0
                         else:
                             #Player not found in draft data, free agent pick up
                             playerFound += 1
@@ -375,7 +399,7 @@ class UpdateData():
                         #Team, Player, Keeper Value, Drafted Round, Prev ADP, Curr ADP 
                         keeperValues.append([teamname, r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'], adp, foundDraft, foundADPPrev, foundADPCurr])
                     
-                    print("Player: " + r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '') + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "+" + str(foundDraft) + "/" + str(playerFound) + " = " + str(adp))
+                    print("Player: " + player_to_find + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "+" + str(foundDraft) + "/" + str(playerFound) + " = " + str(adp))
                     playerFound = 0
                     adp = 0.0
                 
@@ -422,19 +446,18 @@ def main():
     current_week = CurrentWeek()
 
     # with open('./Initial_Setup/league_info_form.txt', 'r') as f:
-    with open('./Initial_Setup/league_info_form_keeper_22.txt', 'r') as f:
-    # with open('./Initial_Setup/league_info_form_keeper_21.txt', 'r') as f:
     # with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
-        rosters = eval(f.read())
+    with open('./Initial_Setup/league_info_form_keeper_21.txt', 'r') as curr:
+        rosters_curr = eval(curr.read())
 
     global num_teams
-    num_teams = rosters['num_teams']
+    num_teams = rosters_curr['num_teams']
 
     global num_weeks
-    num_weeks = rosters['num_weeks']
+    num_weeks = rosters_curr['num_weeks']
     
     global league_id
-    league_id = str(rosters['league_id'])
+    league_id = str(rosters_curr['league_id'])
 
 #### Where the tweets happen ####
     bot = Bot(yahoo_api)
@@ -457,7 +480,10 @@ class Bot():
         print('League update - Done')
 
         UD.UpdatePlayerList()
-        print('Player List - Done')
+        print('Current Team Roster Update - Done')
+
+        UD.UpdateTransactions()
+        print('Transactions update - Done')
 
         #UD.UpdateDraftResults()
         UD.ReadDraftResults()
@@ -465,15 +491,13 @@ class Bot():
         
         UD.CalcDraftValue()              
         print('Draft Value - done')
+
         # UD.UpdateLeagueStandings()
         # print('Standings update - Done')
                            
         # UD.UpdateScoreboards()
         # print('Scoreboards update - Done')
-                           
-        # UD.UpdateTransactions()
-        # print('Transactions update - Done')
-                           
+                              
         # UD.UpdateRosters()
         # print('Rosters update - Done')
                            
