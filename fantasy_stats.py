@@ -8,6 +8,7 @@ import os
 import csv
 import time
 import math
+import sys
 
 draftData = []
 keeperValues = []
@@ -214,8 +215,8 @@ class UpdateData():
             
         global game_key
 
-        #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
-        game_key = '406' #2021
+        game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
+        #game_key = '406' #2021
         #game_key = '414' #2022
         return;
 
@@ -308,9 +309,9 @@ class UpdateData():
         writer.writerow(header)
 
         #Grab the ADPS
-        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2021')
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2022')
         dataCur = responseCur.json()
-        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2020')
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2021')
         dataPrev = responsePrev.json()
 
         load_file = open('./transactions/Transaction_new.json') # load transactions from previous season
@@ -382,13 +383,14 @@ class UpdateData():
                                     break
                                 else:
                                     #Player found in transaction data
-                                    playerFound += 1
                                     foundDraft = 8.0
                                     foundInTransactions = 0
+                                    break
                         else:
                             #Player not found in draft data, free agent pick up
                             playerFound += 1
                             foundDraft = 8.0
+                            break
                         
                     if playerFound != 0:
                         if foundADPCurr != 0.0:
@@ -402,6 +404,8 @@ class UpdateData():
                     print("Player: " + player_to_find + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "+" + str(foundDraft) + "/" + str(playerFound) + " = " + str(adp))
                     playerFound = 0
                     adp = 0.0
+                    is_keeper_idx = 0
+                    foundDraft = 0.0
                 
             team =+ 1
 
@@ -446,8 +450,8 @@ def main():
     current_week = CurrentWeek()
 
     # with open('./Initial_Setup/league_info_form.txt', 'r') as f:
-    # with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
-    with open('./Initial_Setup/league_info_form_keeper_21.txt', 'r') as curr:
+    #with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
+    with open('./Initial_Setup/league_info_form_keeper_22.txt', 'r') as curr:
         rosters_curr = eval(curr.read())
 
     global num_teams
@@ -464,10 +468,49 @@ def main():
     bot.run()
 
     
-
+    
 class Bot():
     def __init__(self, yahoo_api):
         self._yahoo_api = yahoo_api
+    def menu(self):
+        UD = UpdateData()
+
+        print("\r\n************Yahoo Fantasy Football API**************")
+        print()
+
+        choice = input("""
+                        A: Download Draft Results
+                        B: Download Rosters
+                        C: Download Transaction Data
+                        D: Calculate Keeper Values
+                        Q: Quit
+
+                        Please enter your choice: """)
+
+        if choice == "A" or choice =="a":
+            UD.UpdateDraftResults()
+            print('Draft Results - Done')
+        elif choice == "B" or choice =="b":
+            UD.UpdatePlayerList()
+            print('Current Team Roster Update - Done')
+        elif choice == 'C' or choice == 'c':
+            UD.UpdateTransactions()
+            print('Transactions update - Done')
+        elif choice == 'D' or choice == 'd':
+            UD.UpdateTransactions()
+            print('Transactions update - Done')
+
+            UD.ReadDraftResults()
+            print('Draft Results - Done')
+
+            UD.CalcDraftValue()              
+            print('Draft Value - done')
+        elif choice=="Q" or choice=="q":
+            sys.exit
+        else:
+            print("You must only select either A, B, C, or D")
+            print("Please try again")
+            self.menu()    
 
     def run(self):
         # Data Updates
@@ -479,18 +522,21 @@ class Bot():
         UD.UpdateLeague()
         print('League update - Done')
 
-        UD.UpdatePlayerList()
-        print('Current Team Roster Update - Done')
+        #Wait for decision on what to do.
+        self.menu()
 
-        UD.UpdateTransactions()
-        print('Transactions update - Done')
+        # UD.UpdatePlayerList()
+        # print('Current Team Roster Update - Done')
+
+        # UD.UpdateTransactions()
+        # print('Transactions update - Done')
 
         #UD.UpdateDraftResults()
-        UD.ReadDraftResults()
-        print('Draft Results - Done')
+        # UD.ReadDraftResults()
+        # print('Draft Results - Done')
         
-        UD.CalcDraftValue()              
-        print('Draft Value - done')
+        # UD.CalcDraftValue()              
+        # print('Draft Value - done')
 
         # UD.UpdateLeagueStandings()
         # print('Standings update - Done')
@@ -501,7 +547,9 @@ class Bot():
         # UD.UpdateRosters()
         # print('Rosters update - Done')
                            
-        print('Update Complete')
+        #print('Update Complete')
+
+
 
 if __name__ == "__main__":
     main()
