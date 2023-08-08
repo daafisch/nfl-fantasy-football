@@ -311,7 +311,7 @@ class UpdateData():
         foundInTransactions = 0
         header = ['Team', 'Player', 'Keeper Value', 'Drafted Value', 'Prev ADP', 'Curr ADP']
         file_name = 'keeper_values_' + league_id + '.csv'
-        outfile = open('./keeper_values/'+file_name, 'a')
+        outfile = open('./keeper_values/'+file_name, 'w')
         writer = csv.writer(outfile, lineterminator='\n')
         writer.writerow(header)
 
@@ -344,6 +344,7 @@ class UpdateData():
                     i = 0
                     is_keeper_idx = 0
                     player_to_find = r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][2]['name']['full'].replace('.', '')
+                    player_yahoo_key = r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][0]['player_key']
                     #Search Current ADPS
                     for x in dataCur['players']:
                         if player_to_find == x['name'].replace('.', ''):
@@ -361,18 +362,25 @@ class UpdateData():
                         i += 1
                         if i < 168:
                             #Player found in draft data
-                            if player_to_find in draftData[i]:
+                            #if player_to_find in draftData[i]:
+                            if player_yahoo_key in draftData[i]:
                                 playerFound += 1
                                 #search to see if the player involved in a transaction
                                 for x in transactions_prev['fantasy_content']['league'][1]['transactions']:
                                     #if 'add/drop' in hay:
                                     if x != "count":
                                         if "add" in transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][0]['type']:
-                                            if player_to_find == transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][1]['players']['0']['player'][0][2]['name']['full'].replace('.', ''):
+                                            #if player_to_find == transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][1]['players']['0']['player'][0][2]['name']['full'].replace('.', ''):
+                                            if player_yahoo_key == transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][1]['players']['0']['player'][0][0]['player_key']:
                                                 #Player found in transaction data, free agent pick up
                                                 foundInTransactions = 1
                                                 break
-
+                                        # elif "add/drop" in transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][0]['type']:
+                                        #     if 'add' in transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][1]['players']['0']['player'][1]['transaction_data'][0]['type']:
+                                        #         if player_yahoo_key == transactions_prev['fantasy_content']['league'][1]['transactions'][x]['transaction'][1]['players']['0']['player'][0][0]['player_key']:
+                                        #             #Player found in transaction data, free agent pick up
+                                        #             foundInTransactions = 1
+                                        #             break
                                 if foundInTransactions == 0:    
                                     #the index where is_keeper is found changes, so search the list and save the index
                                     for z,  hay in enumerate(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0]):
