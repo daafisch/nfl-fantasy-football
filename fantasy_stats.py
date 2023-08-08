@@ -34,8 +34,8 @@ class UpdateData():
         # Convert existing 'Transactions_new.json' into 'Transactions_old.json' before
         #### downloading up-to-date new transactions
         try:
-            load_file = open('./transactions/Transaction_old.json') # load old_transactions
-            old_transactions = json.load(load_file)
+            load_file = open('./transactions/Transaction_old.json', 'a+') # load old_transactions
+            #old_transactions = json.load(load_file)
             load_file.close()
 
 
@@ -65,7 +65,10 @@ class UpdateData():
         load_file.close()
 
         #### get number of new transactions since last transaction download
-        old_trans = old_transactions['fantasy_content']['league'][1]['transactions']['count']
+        if 'old_transactions' in locals():
+            old_trans = old_transactions['fantasy_content']['league'][1]['transactions']['count']
+        else:
+            old_trans = 0
         new_trans = new_transactions['fantasy_content']['league'][1]['transactions']['count']
         newest_trans = new_trans-old_trans
 
@@ -94,10 +97,10 @@ class UpdateData():
                     players = transactions[str(transaction)]['transaction'][1]['players']
                     for player in range(len(players)-1):
                         tm_name = players[str(player)]['player'][1]['transaction_data']['source_team_name']
-                        tm_key = transactions[str(transaction)]['transaction'][1]['players']['0']['player'][1]['transaction_data'][0]['destination_team_key']
-                        tm_real_nm = team_numbers[str(tm_key)]
+                        tm_key = transactions[str(transaction)]['transaction'][1]['players']['0']['player'][1]['transaction_data']['destination_type']
+                        #tm_real_nm = team_numbers[str(tm_key)]
                         player_name = players[str(player)]['player'][0][2]['name']['full']
-                        status = tm_name, " (", tm_real_nm ,") dropped", player_name
+                        status = tm_name, " (", tm_name ,") dropped", player_name
 
                         # print(status)
                         # add code to append transaction to list, this was originalyl used to Tweet every transaction
@@ -179,7 +182,7 @@ class UpdateData():
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/'
         response = oauth.session.get(url, params={'format': 'json'})
         r = response.json()
-        with open('league.json', 'w') as outfile:
+        with open('league.json', 'a') as outfile:
             json.dump(r, outfile)
         return;
 
@@ -189,7 +192,7 @@ class UpdateData():
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/standings'
         response = oauth.session.get(url, params={'format': 'json'})
         r = response.json()
-        with open('standings.json', 'w') as outfile:
+        with open('standings.json', 'a') as outfile:
             json.dump(r, outfile)
         
         return;
@@ -203,7 +206,7 @@ class UpdateData():
             response = oauth.session.get(url, params={'format': 'json'})
             r = response.json()
             file_name = 'week_' + str(week) + 'scoreboard.json'
-            with open('./weekly_scoreboard/'+file_name, 'w') as outfile:
+            with open('./weekly_scoreboard/'+file_name, 'a') as outfile:
                 json.dump(r, outfile)
             week += 1
         return;
@@ -214,7 +217,7 @@ class UpdateData():
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/game/nfl'
         response = oauth.session.get(url, params={'format': 'json'})
         r = response.json()
-        with open('YahooGameInfo.json', 'w') as outfile:
+        with open('YahooGameInfo.json', 'a') as outfile:
             json.dump(r, outfile)
             
         global game_key
@@ -236,7 +239,7 @@ class UpdateData():
                 response = oauth.session.get(url, params={'format': 'json'})
                 r = response.json()
                 file_name = 'team_'+str(team)+'_wk_' + str(week) + '_roster.json'
-                with open('./rosters/week_'+str(week)+'/'+ file_name, 'w') as outfile:
+                with open('./rosters/week_'+str(week)+'/'+ file_name, 'a') as outfile:
                     json.dump(r, outfile)
                 team =+ 1
             print("Week",week, "roster update - done")
@@ -251,7 +254,7 @@ class UpdateData():
         r = response.json()
         header = ['Draft Pick', 'Drafted Value', 'Player', 'Player ID', 'Team Name']
         file_name = 'draft_results_' + league_id + '.csv'
-        outfile = open('./draft_results/'+file_name, 'w')
+        outfile = open('./draft_results/'+file_name, 'w+')
         writer = csv.writer(outfile, lineterminator='\n')
         writer.writerow(header)
         for x in r['fantasy_content']['league'][1]['draft_results']:  
@@ -297,7 +300,7 @@ class UpdateData():
         response = oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         file_name = 'player_list_' + league_id + '.json'
-        with open('./player_list/'+file_name, 'w') as outfile:
+        with open('./player_list/'+file_name, 'a') as outfile:
             json.dump(r, outfile)
 
     def CalcDraftValue(self):
@@ -308,7 +311,7 @@ class UpdateData():
         foundInTransactions = 0
         header = ['Team', 'Player', 'Keeper Value', 'Drafted Value', 'Prev ADP', 'Curr ADP']
         file_name = 'keeper_values_' + league_id + '.csv'
-        outfile = open('./keeper_values/'+file_name, 'w')
+        outfile = open('./keeper_values/'+file_name, 'a')
         writer = csv.writer(outfile, lineterminator='\n')
         writer.writerow(header)
 
@@ -426,7 +429,7 @@ def CurrentWeek():
 def FFC_ADP():
     
 
-    with open('./rosters/week_16/team_1_wk_16_roster.json') as myFile:
+    with open('./rosters/week_16/team_1_wk_16_roster.json', 'a+') as myFile:
         jsondata=myFile.read()
 
     team1Week16 = json.loads(jsondata)
@@ -455,7 +458,7 @@ def main():
 
     # with open('./Initial_Setup/league_info_form.txt', 'r') as f:
     #with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
-    with open('./Initial_Setup/league_info_form_keeper_22.txt', 'r') as curr:
+    with open('./Initial_Setup/league_info_form_keeper_22.txt') as curr:
         rosters_curr = eval(curr.read())
 
     global num_teams
@@ -494,12 +497,15 @@ class Bot():
         if choice == "A" or choice =="a":
             UD.UpdateDraftResults()
             print('Draft Results - Done')
+            self.menu() 
         elif choice == "B" or choice =="b":
             UD.UpdatePlayerList()
             print('Current Team Roster Update - Done')
+            self.menu() 
         elif choice == 'C' or choice == 'c':
             UD.UpdateTransactions()
             print('Transactions update - Done')
+            self.menu() 
         elif choice == 'D' or choice == 'd':
             UD.UpdateTransactions()
             print('Transactions update - Done')
@@ -509,12 +515,15 @@ class Bot():
 
             UD.CalcDraftValue()              
             print('Draft Value - done')
+            self.menu() 
         elif choice=="Q" or choice=="q":
             sys.exit
         else:
             print("You must only select either A, B, C, or D")
             print("Please try again")
             self.menu()    
+
+        
 
     def run(self):
         # Data Updates
