@@ -31,11 +31,11 @@ if not oauth.token_is_valid():
 with open('../Initial_Setup/league_info_form.txt', 'r') as f:
     rosters = eval(f.read())
 
-league_id = '763832' #str(rosters['league_id'])
+league_id = '442410' #str(rosters['league_id'])
 
 with open('../YahooGameInfo.json', 'r') as f:
     yahoo_info = json.load(f)
-game_key = '406' #yahoo_info['fantasy_content']['game'][0]['game_key']
+game_key = '414' #yahoo_info['fantasy_content']['game'][0]['game_key']
 
 
 columns = ['first', 'last', 'full', 'team',

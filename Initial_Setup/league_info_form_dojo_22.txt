@@ -1,13 +1,15 @@
 {
-  "league_id": 442410,
-  "num_teams": 12,
+  "league_id": 1209638,
+  "num_teams": 10,
   "num_weeks": 16,
   "roster": [
-            'QB',
+            'QB1', 'QB2',
             'WR1', 'WR2', 'WR3',
             'RB1', 'RB2',
             'TE',
             'W/R/T',
+            'K',
+            'DEF',
             'BN1', 'BN2', 'BN3', 'BN4', 'BN5', 'BN6', 'BN7', 'BN8', 'BN9', 'BN10',
             ]
 }

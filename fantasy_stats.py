@@ -33,20 +33,24 @@ class UpdateData():
         # TRANSACTIONS
         # Convert existing 'Transactions_new.json' into 'Transactions_old.json' before
         #### downloading up-to-date new transactions
-        load_file = open('./transactions/Transaction_old.json') # load old_transactions
-        old_transactions = json.load(load_file)
-        load_file.close()
+        try:
+            load_file = open('./transactions/Transaction_old.json') # load old_transactions
+            old_transactions = json.load(load_file)
+            load_file.close()
 
-        load_file = open('./transactions/Transaction_new.json') # load new_transactions (this will get written over once we download the newest data from Yahoo)
-        new_transactions = json.load(load_file)
-        load_file.close()
 
-        with open('./transactions/Transaction_old.json', 'w') as outfile: # save the new*_transactions as old so we can compare the actual new transactions
-            json.dump(new_transactions, outfile)
+            load_file = open('./transactions/Transaction_new.json') # load new_transactions (this will get written over once we download the newest data from Yahoo)
+            new_transactions = json.load(load_file)
+            load_file.close()
 
-        load_file = open('./transactions/Transaction_old.json') # now load the *new* old_transactions as the base for comparison
-        old_transactions = json.load(load_file)
-        load_file.close()
+            with open('./transactions/Transaction_old.json', 'w') as outfile: # save the new*_transactions as old so we can compare the actual new transactions
+                json.dump(new_transactions, outfile)
+
+            load_file = open('./transactions/Transaction_old.json') # now load the *new* old_transactions as the base for comparison
+            old_transactions = json.load(load_file)
+            load_file.close()
+        except:
+            print("Transaction files not found")
 
         yahoo_api._login() # get the newest transactions and write over the existing new_transactions
         #url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/transactions'
@@ -215,9 +219,9 @@ class UpdateData():
             
         global game_key
 
-        game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
+        #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
         #game_key = '406' #2021
-        #game_key = '414' #2022
+        game_key = '414' #2022
         return;
 
 
@@ -309,9 +313,9 @@ class UpdateData():
         writer.writerow(header)
 
         #Grab the ADPS
-        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2022')
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2023')
         dataCur = responseCur.json()
-        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2021')
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2022')
         dataPrev = responsePrev.json()
 
         load_file = open('./transactions/Transaction_new.json') # load transactions from previous season
