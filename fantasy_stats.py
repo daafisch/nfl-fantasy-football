@@ -224,7 +224,8 @@ class UpdateData():
 
         #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
         #game_key = '406' #2021
-        game_key = '414' #2022
+        #game_key = '414' #2022
+        game_key = '423' #2023
         return;
 
 
@@ -316,9 +317,9 @@ class UpdateData():
         writer.writerow(header)
 
         #Grab the ADPS
-        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2023')
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2024')
         dataCur = responseCur.json()
-        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2022')
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2023')
         dataPrev = responsePrev.json()
 
         load_file = open('./transactions/Transaction_new.json') # load transactions from previous season
@@ -466,7 +467,7 @@ def main():
 
     # with open('./Initial_Setup/league_info_form.txt', 'r') as f:
     #with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
-    with open('./Initial_Setup/league_info_form_keeper_22.txt') as curr:
+    with open('./Initial_Setup/league_info_form_keeper_23.txt') as curr:
         rosters_curr = eval(curr.read())
 
     global num_teams
