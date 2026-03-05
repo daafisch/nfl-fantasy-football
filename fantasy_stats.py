@@ -220,12 +220,13 @@ class UpdateData():
         with open('YahooGameInfo.json', 'a') as outfile:
             json.dump(r, outfile)
             
-        global game_key
+        #global game_key
 
         #game_key = r['fantasy_content']['game'][0]['game_key'] # game key as type-string
         #game_key = '406' #2021
         #game_key = '414' #2022
-        game_key = '423' #2023
+        # game_key = '423' #2023
+        #game_key = '449'
         return;
 
 
@@ -317,9 +318,9 @@ class UpdateData():
         writer.writerow(header)
 
         #Grab the ADPS
-        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2024')
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2025')
         dataCur = responseCur.json()
-        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2023')
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2024')
         dataPrev = responsePrev.json()
 
         load_file = open('./transactions/Transaction_new.json') # load transactions from previous season
@@ -396,6 +397,7 @@ class UpdateData():
                                     elif r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['status'] == True:
                                         #Store the keeper value
                                         foundDraft = int(r['fantasy_content']['team'][1]['roster']['0']['players'][y]['player'][0][is_keeper_idx]['is_keeper']['cost'])
+                                        print("")
                                     break
                                 else:
                                     #Player found in transaction data
@@ -467,7 +469,7 @@ def main():
 
     # with open('./Initial_Setup/league_info_form.txt', 'r') as f:
     #with open('./Initial_Setup/league_info_form_dojo_22.txt', 'r') as f:
-    with open('./Initial_Setup/league_info_form_keeper_23.txt') as curr:
+    with open('./Initial_Setup/league_info_form_keeper_25.txt') as curr:
         rosters_curr = eval(curr.read())
 
     global num_teams
@@ -478,6 +480,9 @@ def main():
     
     global league_id
     league_id = str(rosters_curr['league_id'])
+
+    global game_key
+    game_key = str(rosters_curr['game_key'])
 
 #### Where the tweets happen ####
     bot = Bot(yahoo_api)
