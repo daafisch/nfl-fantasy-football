@@ -1,5 +1,4 @@
 import pandas as pd
-from yahoo_oauth import OAuth2
 import json
 from json import dumps
 import datetime
@@ -9,22 +8,11 @@ import csv
 import time
 import math
 import sys
+import yahoo_auth
+from yahoo_auth import Yahoo_Api
 
 draftData = []
 keeperValues = []
-
-class Yahoo_Api():
-    def __init__(self, consumer_key, consumer_secret,
-                access_key):
-        self._consumer_key = consumer_key
-        self._consumer_secret = consumer_secret
-        self._access_key = access_key
-        self._authorization = None
-    def _login(self):
-        global oauth
-        oauth = OAuth2(None, None, from_file='./auth/oauth2yahoo.json')
-        if not oauth.token_is_valid():
-            oauth.refresh_access_token()
 
 class UpdateData():
     #def __init__(self):
@@ -55,7 +43,7 @@ class UpdateData():
         yahoo_api._login() # get the newest transactions and write over the existing new_transactions
         #url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/transactions'
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/transactions'
-        response = oauth.session.get(url, params={'format': 'json'})
+        response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         with open('./transactions/Transaction_new.json', 'w') as outfile:
             json.dump(r, outfile)
@@ -180,7 +168,7 @@ class UpdateData():
         # LEAGUE OVERVIEW
         yahoo_api._login()
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/'
-        response = oauth.session.get(url, params={'format': 'json'})
+        response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         with open('league.json', 'a') as outfile:
             json.dump(r, outfile)
@@ -190,7 +178,7 @@ class UpdateData():
         # STANDINGS
         yahoo_api._login()
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/standings'
-        response = oauth.session.get(url, params={'format': 'json'})
+        response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         with open('standings.json', 'a') as outfile:
             json.dump(r, outfile)
@@ -203,7 +191,7 @@ class UpdateData():
         week = 1
         while week < num_weeks+1: #assumes 16 week-schedule
             url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/scoreboard;week='+str(week)
-            response = oauth.session.get(url, params={'format': 'json'})
+            response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
             r = response.json()
             file_name = 'week_' + str(week) + 'scoreboard.json'
             with open('./weekly_scoreboard/'+file_name, 'a') as outfile:
@@ -215,7 +203,7 @@ class UpdateData():
         # UPDATE LEAGUE GAME ID
         yahoo_api._login()
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/game/nfl'
-        response = oauth.session.get(url, params={'format': 'json'})
+        response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         with open('YahooGameInfo.json', 'a') as outfile:
             json.dump(r, outfile)
@@ -238,7 +226,7 @@ class UpdateData():
             team = 1
             for team in range(1, num_teams+1): #assumes 12-team league
                 url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/'+game_key+'.l.'+league_id+'.t.'+str(team)+'/roster;week='+str(week)
-                response = oauth.session.get(url, params={'format': 'json'})
+                response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
                 r = response.json()
                 file_name = 'team_'+str(team)+'_wk_' + str(week) + '_roster.json'
                 with open('./rosters/week_'+str(week)+'/'+ file_name, 'a') as outfile:
@@ -252,7 +240,7 @@ class UpdateData():
         global draftData
         #"https://fantasysports.yahooapis.com/fantasy/v2/league/{self.get_league_key()}/draftresults"
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/draftresults'
-        response = oauth.session.get(url, params={'format': 'json'})
+        response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         header = ['Draft Pick', 'Drafted Value', 'Player', 'Player ID', 'Team Name']
         file_name = 'draft_results_' + league_id + '.csv'
@@ -268,9 +256,9 @@ class UpdateData():
                 team_key = r['fantasy_content']['league'][1]['draft_results'][x]['draft_result']['team_key']
                 player_url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/players;player_keys='+player_key
                 team_url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/' + team_key + '/metadata' 
-                player_response = oauth.session.get(player_url, params={'format': 'json'})
+                player_response = yahoo_auth.oauth.session.get(player_url, params={'format': 'json'})
                 player_r = player_response.json()
-                team_response = oauth.session.get(team_url, params={'format': 'json'})
+                team_response = yahoo_auth.oauth.session.get(team_url, params={'format': 'json'})
                 team_r = team_response.json()
                 # data = [int(x)+1, player_cost, player_r['fantasy_content']['league'][1]['players']['0']['player'][0][2]['name']['full'],player_key, team_r['fantasy_content']['team'][0][2]['name']]
                 draftData.append([int(x)+1, player_cost, player_r['fantasy_content']['league'][1]['players']['0']['player'][0][2]['name']['full'],player_key, team_r['fantasy_content']['team'][0][2]['name']])
@@ -299,7 +287,7 @@ class UpdateData():
     def UpdatePlayerList(self):
         #https://fantasysports.yahooapis.com/fantasy/v2/league/{self.get_league_key()}/players
         url = 'https://fantasysports.yahooapis.com/fantasy/v2/league/'+game_key+'.l.'+league_id+'/players'
-        response = oauth.session.get(url, params={'format': 'json'})
+        response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
         r = response.json()
         file_name = 'player_list_' + league_id + '.json'
         with open('./player_list/'+file_name, 'a') as outfile:
@@ -332,7 +320,7 @@ class UpdateData():
         team = 1
         for team in range(1, num_teams+1): #assumes 12-team league
             url = 'https://fantasysports.yahooapis.com/fantasy/v2/team/'+game_key+'.l.'+league_id+'.t.'+str(team)+'/roster;week='+str(week)
-            response = oauth.session.get(url, params={'format': 'json'})
+            response = yahoo_auth.oauth.session.get(url, params={'format': 'json'})
             r = response.json()
             teamname = r['fantasy_content']['team'][0][2]['name']
             print("Team: ")
@@ -430,6 +418,73 @@ class UpdateData():
         writer.writerows(keeperValues)
         outfile.close()    
 
+    def CalcDraftValueFromCSV(self, roster_csv_path):
+        """
+        Calculate keeper values from a manually created roster CSV.
+
+        Input CSV expected columns: Team, Player, Drafted Value
+        Output CSV: Team, Player, Keeper Value, Drafted Value, Prev ADP, Curr ADP
+        """
+        global keeperValues
+        keeperValues = []
+
+        header = ['Team', 'Player', 'Keeper Value', 'Drafted Value', 'Prev ADP', 'Curr ADP']
+        file_name = 'keeper_values_' + league_id + '.csv'
+        outfile = open('./keeper_values/' + file_name, 'w')
+        writer = csv.writer(outfile, lineterminator='\n')
+        writer.writerow(header)
+
+        # Fetch ADPs from fantasyfootballcalculator.com
+        responseCur = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2026')
+        dataCur = responseCur.json()
+        responsePrev = requests.get('https://fantasyfootballcalculator.com/api/v1/adp/ppr?teams=12&year=2025')
+        dataPrev = responsePrev.json()
+
+        # Read the manually created roster CSV
+        with open(roster_csv_path, newline='\n') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                teamname = row['Team'].strip()
+                player_to_find = row['Player'].strip().replace('.', '')
+                drafted_round = int(row['Drafted Value'].strip())
+
+                playerFound = 0
+                foundADPCurr = 0.0
+                foundADPPrev = 0.0
+                adp = 0
+
+                # Search Current ADP
+                for x in dataCur['players']:
+                    if player_to_find == x['name'].replace('.', ''):
+                        playerFound += 1
+                        foundADPCurr = x['adp']
+                        break
+
+                # Search Previous ADP
+                for x in dataPrev['players']:
+                    if player_to_find == x['name'].replace('.', ''):
+                        playerFound += 1
+                        foundADPPrev = x['adp']
+                        break
+
+                # Count the drafted round as a data point
+                playerFound += 1
+
+                if foundADPCurr != 0.0:
+                    foundADPCurr = int((foundADPCurr / 12) + 1)
+                if foundADPPrev != 0.0:
+                    foundADPPrev = int((foundADPPrev / 12) + 1)
+
+                adp = int((foundADPCurr + foundADPPrev + drafted_round) / playerFound)
+
+                keeperValues.append([teamname, row['Player'].strip(), adp, drafted_round, foundADPPrev, foundADPCurr])
+                print("Player: " + player_to_find + " ADP: " + str(foundADPPrev) + "+" + str(foundADPCurr) + "+" + str(drafted_round) + "/" + str(playerFound) + " = " + str(adp))
+
+        writer.writerows(keeperValues)
+        outfile.close()
+        print("Keeper values written to ./keeper_values/" + file_name)
+
+
 def CurrentWeek():
     current_week = 1
     #with open('./league.json', 'r') as fobj:
@@ -504,6 +559,7 @@ class Bot():
                         B: Download Rosters
                         C: Download Transaction Data
                         D: Calculate Keeper Values
+                        E: Calculate Keeper Values from CSV
                         Q: Quit
 
                         Please enter your choice: """)
@@ -530,10 +586,15 @@ class Bot():
             UD.CalcDraftValue()              
             print('Draft Value - done')
             self.menu() 
+        elif choice == 'E' or choice == 'e':
+            roster_csv = input("Enter path to roster CSV file: ").strip()
+            UD.CalcDraftValueFromCSV(roster_csv)
+            print('Draft Value from CSV - done')
+            self.menu()
         elif choice=="Q" or choice=="q":
             sys.exit
         else:
-            print("You must only select either A, B, C, or D")
+            print("You must only select either A, B, C, D, or E")
             print("Please try again")
             self.menu()    
 
